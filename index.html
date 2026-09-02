@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kloud Sport -- Tablero</title>
+<style>
+  :root {
+    --bg: #0B0D12;
+    --card: #12151C;
+    --border: #232838;
+    --text: #F1F5F9;
+    --muted: #8B95A8;
+    --accent: #38BDF8;
+    --green: #34D399;
+    --red: #F87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  #gate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+  }
+  .gate-box { text-align: center; max-width: 280px; width: 100%; }
+  .gate-box .wordmark { justify-content: center; display: flex; }
+  #gate-input {
+    margin-top: 24px;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    text-align: center;
+  }
+  #gate-input:focus { outline: none; border-color: var(--accent); }
+  #gate-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #gate-error { display: none; color: var(--red); font-size: 13px; margin-top: 10px; }
+  .layout { display: flex; min-height: 100vh; align-items: flex-start; }
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 24px 18px;
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+  }
+  .wordmark { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .wordmark span {
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    font-size: 13px;
+    margin-left: 5px;
+  }
+  .subtitle { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .sidebar nav { display: flex; flex-direction: column; gap: 2px; margin-top: 24px; }
+  .sidebar nav a {
+    display: block;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .sidebar nav a:hover { color: var(--text); background: var(--card); }
+  main { flex: 1; padding: 28px 24px; max-width: 720px; }
+  main section { margin-bottom: 32px; scroll-margin-top: 16px; }
+  .balance-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .balance-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .balance-card .label { font-size: 12px; color: var(--muted); }
+  .balance-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+  .candidato {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .candidato-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .partido { font-size: 17px; font-weight: 700; }
+  .liga-fecha { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .veredicto { margin-top: 10px; font-size: 14px; }
+  .veredicto .mercado { color: var(--accent); font-weight: 600; }
+  .motivo { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .calc-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .calc-row label { font-size: 12px; color: var(--muted); }
+  .calc-row input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    width: 90px;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .calc-row input:focus { outline: none; border-color: var(--accent); }
+  .resultado { font-size: 14px; margin-top: 10px; }
+  .resultado .stake { font-weight: 700; color: var(--green); font-size: 16px; }
+  .resultado.sin-valor { color: var(--red); }
+  .monto-positivo { color: var(--green); font-weight: 700; }
+  .monto-negativo { color: var(--red); font-weight: 700; }
+  .empty { color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    .sidebar {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 18px;
+      position: static;
+    }
+    .sidebar nav { flex-direction: row; overflow-x: auto; margin-top: 14px; gap: 6px; }
+    .sidebar nav a { white-space: nowrap; }
+    main { padding: 20px 16px; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="wordmark">KLOUD<span>SPORT</span></div>
+    <input type="password" id="gate-input" placeholder="Contraseña" autofocus>
+    <button id="gate-btn" onclick="checkPassword()">Entrar</button>
+    <p id="gate-error">Contraseña incorrecta</p>
+  </div>
+</div>
+
+<div id="content" style="display:none;">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="wordmark">KLOUD<span>SPORT</span></div>
+    <div class="subtitle">Actualizado: 02/09/2026 20:52</div>
+    <nav>
+      <a href="#resumen">Resumen</a>
+      <a href="#candidatos">Candidatos</a>
+      <a href="#pendientes">Pendientes</a>
+      <a href="#ganadas">Ganadas</a>
+      <a href="#perdidas">Perdidas</a>
+    </nav>
+  </aside>
+
+  <main>
+    <section id="resumen">
+      <div class="section-title">Resumen</div>
+      <div class="balance-row" id="balance-row"></div>
+    </section>
+
+    <section id="candidatos">
+      <div class="section-title">Candidatos de la semana</div>
+      <div id="candidatos-list"></div>
+    </section>
+
+    <section id="pendientes">
+      <div class="section-title">Pendientes</div>
+      <div id="pendientes-list"></div>
+    </section>
+
+    <section id="ganadas">
+      <div class="section-title">Ganadas (últimas 15)</div>
+      <div id="ganadas-list"></div>
+    </section>
+
+    <section id="perdidas">
+      <div class="section-title">Perdidas (últimas 15)</div>
+      <div id="perdidas-list"></div>
+    </section>
+  </main>
+</div>
+</div>
+
+<script>
+const CANDIDATOS = [{"id": "2026-09-03|Real Sociedad de Fútbol|RC Celta de Vigo", "liga": "la_liga", "home_team": "Real Sociedad de Fútbol", "away_team": "RC Celta de Vigo", "fecha": "2026-09-03", "favorito": "Real Sociedad de Fútbol", "mercado_elegido": "over_15", "mercado_nombre": "Total de Goles Más de 1.5", "prob_elegida": 76.49, "motivo_veredicto": "único candidato", "min_odds_required": 1.31}, {"id": "2026-09-04|VfB Stuttgart|1. FC Köln", "liga": "bundesliga", "home_team": "VfB Stuttgart", "away_team": "1. FC Köln", "fecha": "2026-09-04", "favorito": "VfB Stuttgart", "mercado_elegido": "ah_plus_05", "mercado_nombre": "Doble Oportunidad (VfB Stuttgart)", "prob_elegida": 86.33, "motivo_veredicto": "ROI parecido, mayor margen relativo sobre umbral (8.5% vs 8.9%)", "min_odds_required": 1.16}, {"id": "2026-09-04|Sparta Rotterdam|PEC Zwolle", "liga": "eredivisie", "home_team": "Sparta Rotterdam", "away_team": "PEC Zwolle", "fecha": "2026-09-04", "favorito": "Sparta Rotterdam", "mercado_elegido": "over_25", "mercado_nombre": "Total de Goles Más de 2.5", "prob_elegida": 61.26, "motivo_veredicto": "mejor ROI histórico (34.5%)", "min_odds_required": 1.63}, {"id": "2026-09-04|Real Betis Balompié|Real Madrid CF", "liga": "la_liga", "home_team": "Real Betis Balompié", "away_team": "Real Madrid CF", "fecha": "2026-09-04", "favorito": "Real Madrid CF", "mercado_elegido": "over_15", "mercado_nombre": "Total de Goles Más de 1.5", "prob_elegida": 74.45, "motivo_veredicto": "único candidato", "min_odds_required": 1.34}, {"id": "2026-09-04|FC Porto|Moreirense FC", "liga": "primeira_liga", "home_team": "FC Porto", "away_team": "Moreirense FC", "fecha": "2026-09-04", "favorito": "FC Porto", "mercado_elegido": "ah_plus_05", "mercado_nombre": "Doble Oportunidad (FC Porto)", "prob_elegida": 94.12, "motivo_veredicto": "mejor ROI histórico (60.0%)", "min_odds_required": 1.06}, {"id": "2026-09-04|Genoa CFC|Como 1907", "liga": "serie_a", "home_team": "Genoa CFC", "away_team": "Como 1907", "fecha": "2026-09-04", "favorito": "Como 1907", "mercado_elegido": "over_15", "mercado_nombre": "Total de Goles Más de 1.5", "prob_elegida": 70.56, "motivo_veredicto": "único candidato", "min_odds_required": 1.42}];
+const BALANCE = null;
+const PENDIENTES = [{"home_team": "PSV", "away_team": "Fortuna Sittard", "liga": "eredivisie", "fecha_partido": "2026-08-08", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.23, "stake": 10000.0}, {"home_team": "CF Estrela da Amadora", "away_team": "Sporting Clube de Portugal", "liga": "primeira_liga", "fecha_partido": "2026-08-08", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.24, "stake": 10000.0}, {"home_team": "FC Porto", "away_team": "FC Alverca", "liga": "primeira_liga", "fecha_partido": "2026-08-09", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.19, "stake": 10000.0}, {"home_team": "Sporting Clube de Portugal", "away_team": "Vitória SC", "liga": "primeira_liga", "fecha_partido": "2026-08-14", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.24, "stake": 10000.0}, {"home_team": "PSV", "away_team": "Fortuna Sittard", "liga": "eredivisie", "fecha_partido": "2026-08-08", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.21, "stake": 10000.0}, {"home_team": "CF Estrela da Amadora", "away_team": "Sporting Clube de Portugal", "liga": "primeira_liga", "fecha_partido": "2026-08-08", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.24, "stake": 10000.0}, {"home_team": "FC Porto", "away_team": "FC Alverca", "liga": "primeira_liga", "fecha_partido": "2026-08-09", "mercado_nombre": "1x2 (registro anterior a la Fase 6B)", "odds": 1.21, "stake": 10000.0}];
+const GANADAS = [];
+const PERDIDAS = [];
+const KELLY = {"bankroll": 200000, "fraccion": 0.15, "tope_pct": 0.05};
+const PASSWORD_HASH = "51cd7fced27272d0e810a52ce73665f69dcb9f715c4896b1ecc838977fe2599c";
+const AUTH_KEY = 'kloud_auth_ok';
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('es-AR');
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function unlockContent() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('content').style.display = '';
+}
+
+async function checkPassword() {
+  const input = document.getElementById('gate-input').value;
+  const hash = await sha256Hex(input);
+  if (hash === PASSWORD_HASH) {
+    localStorage.setItem(AUTH_KEY, '1');
+    unlockContent();
+  } else {
+    document.getElementById('gate-error').style.display = 'block';
+  }
+}
+
+document.getElementById('gate-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkPassword();
+});
+
+if (localStorage.getItem(AUTH_KEY) === '1') {
+  unlockContent();
+}
+
+function calcularStake(prob, odds) {
+  const p = prob / 100;
+  const minOdds = 1 / p;
+  if (odds <= minOdds) {
+    return { valor: false, minOdds: minOdds.toFixed(2) };
+  }
+  const q = 1 - p;
+  const b = odds - 1;
+  const kellyPct = ((b * p) - q) / b;
+  if (kellyPct <= 0) {
+    return { valor: false, minOdds: minOdds.toFixed(2) };
+  }
+  const rawStake  = KELLY.bankroll * kellyPct * KELLY.fraccion;
+  const topeStake = KELLY.bankroll * KELLY.tope_pct;
+  const stake     = Math.min(rawStake, topeStake);
+  const retorno   = stake * odds;
+  const ganancia  = retorno - stake;
+  return { valor: true, stake: stake, retorno: retorno, ganancia: ganancia };
+}
+
+function renderBalance() {
+  const el = document.getElementById('balance-row');
+  if (!BALANCE) {
+    el.innerHTML = '<div class="empty">Todavia no hay apuestas registradas.</div>';
+    return;
+  }
+  let racha = '—';
+  if (BALANCE.racha_actual > 0) racha = '+' + BALANCE.racha_actual;
+  else if (BALANCE.racha_actual < 0) racha = String(BALANCE.racha_actual);
+
+  const gananciaColor = BALANCE.ganancia_total >= 0 ? 'var(--green)' : 'var(--red)';
+
+  el.innerHTML =
+    '<div class="balance-card"><div class="label">Precision</div><div class="value">' + BALANCE.precision + '%</div></div>' +
+    '<div class="balance-card"><div class="label">Ganancia acumulada</div><div class="value" style="color:' + gananciaColor + '">$' + fmt(BALANCE.ganancia_total) + '</div></div>' +
+    '<div class="balance-card"><div class="label">ROI</div><div class="value">' + BALANCE.roi + '%</div></div>' +
+    '<div class="balance-card"><div class="label">Racha actual</div><div class="value">' + racha + '</div></div>';
+}
+
+function renderPendientes() {
+  const el = document.getElementById('pendientes-list');
+  if (!PENDIENTES.length) {
+    el.innerHTML = '<div class="empty">No tenes apuestas pendientes.</div>';
+    return;
+  }
+  el.innerHTML = PENDIENTES.map(function(p) {
+    return '<div class="candidato">' +
+      '<div class="candidato-header">' +
+        '<div class="partido">' + p.home_team + ' vs ' + p.away_team + '</div>' +
+        '<div class="liga-fecha">' + p.liga + ' · ' + p.fecha_partido + '</div>' +
+      '</div>' +
+      '<div class="veredicto"><span class="mercado">' + p.mercado_nombre + '</span> · cuota ' + p.odds + ' · stake $' + fmt(p.stake) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderCandidatos() {
+  const el = document.getElementById('candidatos-list');
+  if (!CANDIDATOS.length) {
+    el.innerHTML = '<div class="empty">No hay candidatos cargados. Corre el export de nuevo.</div>';
+    return;
+  }
+  el.innerHTML = CANDIDATOS.map(function(c) {
+    return '<div class="candidato">' +
+      '<div class="candidato-header">' +
+        '<div class="partido">' + c.home_team + ' vs ' + c.away_team + '</div>' +
+        '<div class="liga-fecha">' + c.liga + ' · ' + c.fecha + '</div>' +
+      '</div>' +
+      '<div class="veredicto"><span class="mercado">' + c.mercado_nombre + '</span> — ' + c.prob_elegida + '% del modelo</div>' +
+      '<div class="motivo">' + c.motivo_veredicto + '</div>' +
+      '<div class="calc-row">' +
+        '<div><label>Cuota Betsson</label><br>' +
+        '<input type="number" step="0.01" min="1.01" data-id="' + c.id + '" data-prob="' + c.prob_elegida + '" oninput="onCuotaChange(this)"></div>' +
+        '<div class="resultado" id="resultado-' + c.id + '">Cuota minima para valor: ' + c.min_odds_required + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function onCuotaChange(input) {
+  const odds = parseFloat(input.value);
+  const prob = parseFloat(input.dataset.prob);
+  const id   = input.dataset.id;
+  const box  = document.getElementById('resultado-' + id);
+
+  if (!odds || odds <= 1) {
+    box.className = 'resultado';
+    box.textContent = '';
+    return;
+  }
+
+  const r = calcularStake(prob, odds);
+  if (!r.valor) {
+    box.className = 'resultado sin-valor';
+    box.innerHTML = 'Sin valor — necesitas cuota &ge; ' + r.minOdds;
+  } else {
+    box.className = 'resultado';
+    box.innerHTML = 'Stake sugerido: <span class="stake">$' + fmt(r.stake) + '</span> · ganancia potencial $' + fmt(r.ganancia);
+  }
+}
+
+function renderResultados(elementId, lista, vacioTexto) {
+  const el = document.getElementById(elementId);
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty">' + vacioTexto + '</div>';
+    return;
+  }
+  el.innerHTML = lista.map(function(r) {
+    const hayMarcador = r.goles_home !== null && r.goles_home !== undefined;
+    const marcador = hayMarcador ? ' (' + r.goles_home + '-' + r.goles_away + ')' : '';
+    const montoClass = r.ganancia >= 0 ? 'monto-positivo' : 'monto-negativo';
+    const montoTexto = (r.ganancia >= 0 ? '+' : '') + '$' + fmt(r.ganancia);
+    return '<div class="candidato">' +
+      '<div class="candidato-header">' +
+        '<div class="partido">' + r.home_team + ' vs ' + r.away_team + marcador + '</div>' +
+        '<div class="liga-fecha">' + r.liga + ' · ' + r.fecha_partido + '</div>' +
+      '</div>' +
+      '<div class="veredicto"><span class="mercado">' + r.mercado_nombre + '</span> · cuota ' + r.odds + ' · stake $' + fmt(r.stake) + '</div>' +
+      '<div class="resultado"><span class="' + montoClass + '">' + montoTexto + '</span></div>' +
+    '</div>';
+  }).join('');
+}
+
+renderBalance();
+renderPendientes();
+renderCandidatos();
+renderResultados('ganadas-list', GANADAS, 'Todavia no hay apuestas ganadas.');
+renderResultados('perdidas-list', PERDIDAS, 'Todavia no hay apuestas perdidas.');
+</script>
+</body>
+</html>
