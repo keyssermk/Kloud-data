@@ -283,7 +283,7 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="wordmark">KLOUD<span>SPORT</span></div>
-    <div class="subtitle">Actualizado: 03/09/2026 22:07</div>
+    <div class="subtitle">Actualizado: 03/09/2026 22:12</div>
     <nav>
       <a href="#resumen">Resumen</a>
       <a href="#candidatos">Candidatos</a>
@@ -388,24 +388,46 @@ if (localStorage.getItem(AUTH_KEY) === '1') {
   unlockContent();
 }
 
-// ---------- Comunicacion con el Google Apps Script ----------
-// POST va como text/plain a proposito: si fuera application/json el
-// navegador manda un preflight (OPTIONS) antes, y Apps Script no lo
-// responde bien -- con text/plain el pedido cuenta como "simple" y el
-// navegador no lo manda. Del lado del Script, JSON.parse(e.postData.contents)
-// lo reconstruye igual.
-async function postScript(data) {
-  const resp = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(data)
+// ---------- Comunicacion con el Google Apps Script (JSONP) ----------
+// fetch() quedaba bloqueado por CORS -- Google no manda el header
+// Access-Control-Allow-Origin en la respuesta del Web App, ni para GET
+// ni confiando en el truco de text/plain para POST. JSONP lo esquiva
+// del todo: en vez de fetch, se carga un <script src="..."> con los
+// datos como parametros de URL -- los tags <script> nunca estuvieron
+// sujetos a CORS, es como cargar cualquier libreria de un CDN.
+let jsonpContador = 0;
+
+function llamarScript(params) {
+  return new Promise(function(resolve, reject) {
+    const nombreCallback = 'kloudCb' + (jsonpContador++);
+    const script = document.createElement('script');
+
+    function limpiar() {
+      delete window[nombreCallback];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[nombreCallback] = function(data) {
+      resolve(data);
+      limpiar();
+    };
+
+    script.onerror = function() {
+      reject(new Error('No se pudo conectar con el Script'));
+      limpiar();
+    };
+
+    const query = Object.keys(params).map(function(k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    }).join('&');
+
+    script.src = APPS_SCRIPT_URL + '?' + query + '&callback=' + nombreCallback;
+    document.body.appendChild(script);
   });
-  return resp.json();
 }
 
 async function getResumen() {
-  const resp = await fetch(APPS_SCRIPT_URL + '?action=resumen');
-  return resp.json();
+  return llamarScript({ action: 'resumen' });
 }
 
 async function cargarResumen() {
@@ -554,7 +576,7 @@ async function confirmarReset() {
   const ok = confirm('Esto reinicia el resumen a cero para arrancar una caja nueva. Las apuestas viejas quedan guardadas en la planilla, no se borran. ¿Confirmás?');
   if (!ok) return;
   try {
-    await postScript({ action: 'reset' });
+    await llamarScript({ action: 'reset' });
     cargarResumen();
   } catch (err) {
     alert('No se pudo resetear: ' + err.message);
@@ -591,7 +613,7 @@ function renderPendientes(lista) {
 async function marcarResultado(id, resultado, cont) {
   cont.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
   try {
-    await postScript({ action: 'marcar_resultado', id: id, resultado: resultado });
+    await llamarScript({ action: 'marcar_resultado', id: id, resultado: resultado });
     cargarResumen();
   } catch (err) {
     alert('No se pudo guardar: ' + err.message);
@@ -774,12 +796,12 @@ async function confirmarApuesta(id) {
     return;
   }
 
-  const btn = document.querySelector('#confirmar-' + id + ' button');
+  const btn = document.getElementById('confirmar-' + id).querySelector('button');
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
   try {
-    await postScript({
+    await llamarScript({
       action: 'confirmar',
       liga: c.liga,
       home_team: c.home_team,
